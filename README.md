@@ -1,21 +1,29 @@
-MinzaiX Password Generator Website
-A modern and secure password generator website developed by MinzaiX.
+# 🔐 Password Generator
 
-Features
-Generate numbers-only passwords
-Generate alphabet-only passwords
-Generate alphanumeric passwords
-Generate passwords with symbols
-Password strength indicator
-Clean and user-friendly interface
-Fast and secure password generation
-Technologies Used
-HTML
-CSS
-JavaScript
-Purpose
-This project was created to provide a simple and efficient way to generate secure passwords for personal and professional use.
+A simple and professional Python Password Generator developed by **MinzaiX**.
 
-Author
-Developed by MinzaiX
-GitHub: decodewithaayat
+## ✨ Features
+
+- 🔢 Numbers Only
+- 🔤 Alphabets Only
+- 🔤🔢 Alphanumeric Passwords
+- 🔐 Alphanumeric + Symbols
+- 📏 Custom Password Length
+- 💪 Password Strength Check
+- ❌ Invalid Input Handling
+- 🔄 Generate Multiple Passwords
+- 🔒 Uses Python `secrets` module
+
+## 🛠️ Requirements
+
+- Python 3.x
+- No external libraries required
+
+## ▶️ How to Run
+
+Open PowerShell or Command Prompt in the project folder.
+
+Run:
+
+```bash
+python Password_Generator.py
