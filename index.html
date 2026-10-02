@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MinzaiX — Password Generator | Python → Web Edition</title>
+<meta name="description" content="Cryptographically secure password generator by MinzaiX. Python secrets.choice logic reimagined for the web."/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: { void:'#05070f', panel:'#0b1020', limex:'#a3e635', cyanx:'#22d3ee' },
+      fontFamily: { grotesk:['Space Grotesk','sans-serif'], mono:['JetBrains Mono','monospace'], inter:['Inter','sans-serif'] },
+      boxShadow: { glow:'0 0 40px -10px rgba(163,230,53,.35)', glowCyan:'0 0 40px -10px rgba(34,211,238,.35)' }
+    }
+  }
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  *{ -webkit-tap-highlight-color:transparent; }
+  html{ scroll-behavior:smooth; }
+  body{ background:#05070f; }
+  ::selection{ background:#a3e635; color:#05070f; }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-track{ background:#070b16; }
+  ::-webkit-scrollbar-thumb{ background:linear-gradient(180deg,#a3e635,#22d3ee); border-radius:99px; border:2px solid #070b16; }
+  .glass{ background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.09); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+  .glass-strong{ background:rgba(11,16,32,.85); border:1px solid rgba(255,255,255,.1); backdrop-filter:blur(22px); }
+  .grid-bg{
+    background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
+    background-size:42px 42px;
+    mask-image:radial-gradient(ellipse 90% 70% at 50% 20%,black 30%,transparent 75%);
+  }
+  .noise::after{
+    content:""; position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .orb{ position:fixed; border-radius:9999px; filter:blur(110px); z-index:0; pointer-events:none; opacity:.5; }
+  @keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(60px,-40px)}}
+  @keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,50px)}}
+  .animate-float1{ animation:float1 14s ease-in-out infinite; }
+  .animate-float2{ animation:float2 18s ease-in-out infinite; }
+
+  /* slider */
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:8px; border-radius:99px; background:linear-gradient(90deg,#a3e635 var(--fill,25%),rgba(255,255,255,.1) var(--fill,25%)); outline:none; cursor:pointer; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:#05070f; border:3px solid #a3e635; box-shadow:0 0 0 4px rgba(163,230,53,.15),0 0 20px rgba(163,230,53,.6); transition:.2s; }
+  input[type=range]::-webkit-slider-thumb:hover{ transform:scale(1.15); box-shadow:0 0 0 8px rgba(163,230,53,.15),0 0 30px rgba(163,230,53,.8); }
+  input[type=range]::-moz-range-thumb{ width:22px; height:22px; border-radius:50%; background:#05070f; border:3px solid #a3e635; box-shadow:0 0 20px rgba(163,230,53,.6); cursor:pointer; }
+
+  /* toggle */
+  .switch{ position:relative; width:46px; height:26px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .track{ position:absolute; inset:0; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15); border-radius:99px; transition:.25s; cursor:pointer; }
+  .track::after{ content:""; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:#94a3b8; transition:.25s cubic-bezier(.34,1.56,.64,1); }
+  .switch input:checked + .track{ background:linear-gradient(90deg,#a3e635,#22d3ee); border-color:transparent; box-shadow:0 0 15px rgba(163,230,53,.4); }
+  .switch input:checked + .track::after{ transform:translateX(20px); background:#05070f; }
+
+  .mode-card{ transition:.25s cubic-bezier(.4,0,.2,1); cursor:pointer; position:relative; overflow:hidden; }
+  .mode-card::before{ content:""; position:absolute; inset:0; opacity:0; transition:.25s; background:radial-gradient(400px circle at var(--mx,50%) var(--my,50%),rgba(163,230,53,.12),transparent 60%); }
+  .mode-card:hover::before{ opacity:1; }
+  .mode-card.active{ border-color:rgba(163,230,53,.6)!important; background:linear-gradient(180deg,rgba(163,230,53,.12),rgba(34,211,238,.06))!important; box-shadow:0 0 30px -8px rgba(163,230,53,.4),inset 0 1px 0 rgba(255,255,255,.1); }
+  .mode-card.active .mode-check{ opacity:1; transform:scale(1); }
+  .mode-check{ opacity:0; transform:scale(.5); transition:.25s cubic-bezier(.34,1.56,.64,1); }
+
+  .preset-btn{ transition:.2s; }
+  .preset-btn.active{ background:#a3e635!important; color:#05070f!important; border-color:#a3e635!important; font-weight:700; box-shadow:0 0 20px rgba(163,230,53,.4); }
+
+  .qty-btn.active{ background:linear-gradient(90deg,#a3e635,#22d3ee)!important; color:#05070f!important; border-color:transparent!important; font-weight:700; }
+
+  #pwdDisplay{ word-break:break-all; line-height:1.5; min-height:84px; }
+  #pwdDisplay.generating{ animation:pwdPulse .5s ease-in-out infinite alternate; }
+  @keyframes pwdPulse{ from{opacity:.7} to{opacity:1} }
+  .tok-lower{ color:#e2e8f0; } .tok-upper{ color:#a3e635; font-weight:700; } .tok-digit{ color:#22d3ee; font-weight:700; } .tok-symbol{ color:#f0abfc; font-weight:700; text-shadow:0 0 12px rgba(240,171,252,.5); }
+
+  #strengthFill{ transition:width .8s cubic-bezier(.22,1,.36,1),background .4s; }
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  .shimmer{ background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.3) 50%,transparent 70%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
+
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+  .shake{ animation:shake .4s ease; border-color:rgba(248,113,113,.7)!important; }
+
+  .reveal{ opacity:0; transform:translateY(28px); transition:.7s cubic-bezier(.22,1,.36,1); }
+  .reveal.visible{ opacity:1; transform:translateY(0); }
+
+  .toast{ animation:toastIn .35s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes toastIn{ from{opacity:0; transform:translateX(60px) scale(.9)} to{opacity:1; transform:translateX(0) scale(1)} }
+  .toast.out{ animation:toastOut .3s ease forwards; }
+  @keyframes toastOut{ to{opacity:0; transform:translateX(60px)} }
+
+  @keyframes spinOnce{ to{transform:rotate(360deg)} }
+  .spinning{ animation:spinOnce .6s cubic-bezier(.34,1.3,.64,1); }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .cursor-blink{ animation:blink 1s infinite; }
+  @keyframes gradientMove{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  .animated-gradient{ background-size:200% 200%; animation:gradientMove 5s ease infinite; }
+
+  .history-item{ transition:.2s; }
+  .history-item:hover{ border-color:rgba(163,230,53,.3)!important; transform:translateX(4px); }
+
+  pre code{ font-family:'JetBrains Mono',monospace!important; font-size:13px!important; line-height:1.7!important; }
+  .tab-btn.active{ background:linear-gradient(90deg,#a3e635,#22d3ee); color:#05070f; font-weight:700; }
+
+  #generateBtn{ position:relative; overflow:hidden; }
+  #generateBtn::after{ content:""; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent); transition:left .5s; }
+  #generateBtn:hover::after{ left:100%; }
+  #generateBtn:active{ transform:scale(.97); }
+
+  kbd{ font-family:'JetBrains Mono',monospace; font-size:10px; padding:2px 6px; border-radius:6px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-bottom-width:2px; }
+  #scrollProgress{ transition:width .1s linear; }
+  .tip-card{ transition:.3s; } .tip-card:hover{ transform:translateY(-6px); border-color:rgba(163,230,53,.4)!important; box-shadow:0 20px 50px -15px rgba(163,230,53,.25); }
+</style>
+</head>
+<body class="text-slate-200 font-grotesk noise overflow-x-hidden antialiased">
+
+<canvas id="bgCanvas" class="fixed inset-0 z-0 opacity-60 pointer-events-none"></canvas>
+<div class="fixed inset-0 z-0 grid-bg pointer-events-none"></div>
+<div class="orb w-[500px] h-[500px] bg-lime-500/20 -top-40 -left-40 animate-float1"></div>
+<div class="orb w-[600px] h-[600px] bg-cyan-500/15 top-[30%] -right-40 animate-float2"></div>
+<div class="orb w-[400px] h-[400px] bg-violet-600/15 bottom-0 left-[30%] animate-float1"></div>
+<div id="scrollProgress" class="fixed top-0 left-0 h-[3px] bg-gradient-to-r from-lime-400 via-cyan-400 to-violet-500 z-[60] w-0"></div>
+
+<!-- NAV -->
+<nav class="fixed top-0 w-full z-50 glass-strong/80 backdrop-blur-xl border-b border-white/5">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 h-[68px] flex items-center justify-between">
+    <a href="#top" class="flex items-center gap-3 group">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-lime-400 to-cyan-500 flex items-center justify-center shadow-glow group-hover:rotate-12 transition-transform">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#05070f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div class="leading-tight">
+        <div class="font-bold text-white tracking-tight">MinzaiX <span class="text-lime-400">·</span> <span class="bg-gradient-to-r from-lime-300 to-cyan-300 bg-clip-text text-transparent">PassGen</span></div>
+        <div class="text-[10px] font-mono text-slate-500 tracking-widest uppercase">Python → Web Edition</div>
+      </div>
+    </a>
+    <div class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-400">
+      <a href="#generator" class="hover:text-lime-300 transition-colors">Generator</a>
+      <a href="#analyzer" class="hover:text-lime-300 transition-colors">Analyzer</a>
+      <a href="#code" class="hover:text-lime-300 transition-colors">Source Code</a>
+      <a href="#tips" class="hover:text-lime-300 transition-colors">Security Tips</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="soundToggle" title="Toggle sound" class="hidden sm:flex w-9 h-9 rounded-lg border border-white/10 bg-white/5 items-center justify-center hover:border-lime-400/40 transition-colors">
+        <svg id="soundOnIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg>
+        <svg id="soundOffIcon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      </button>
+      <a href="https://github.com/decodewithaayat" target="_blank" class="hidden sm:flex items-center gap-2 text-xs font-mono px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:border-lime-400/40 hover:text-lime-300 transition-all">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55v-2.15c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.69 1.25 3.35.95.1-.74.4-1.25.72-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.78 0c2.21-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12v3.15c0 .3.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+        decodewithaayat
+      </a>
+      <a href="#generator" class="text-xs sm:text-sm font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-lime-400 to-cyan-400 text-[#05070f] hover:shadow-glow transition-shadow">Generate →</a>
+      <button id="mobileMenuBtn" class="md:hidden w-9 h-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="mobileMenu" class="hidden md:hidden border-t border-white/5 px-6 py-4 flex flex-col gap-3 text-sm bg-[#05070f]/95 backdrop-blur-xl">
+    <a href="#generator" class="py-2 text-slate-300">Generator</a>
+    <a href="#analyzer" class="py-2 text-slate-300">Analyzer</a>
+    <a href="#code" class="py-2 text-slate-300">Source Code</a>
+    <a href="#tips" class="py-2 text-slate-300">Security Tips</a>
+    <a href="https://github.com/decodewithaayat" target="_blank" class="py-2 text-lime-300 font-mono text-xs">GitHub: decodewithaayat →</a>
+  </div>
+</nav>
+
+<main id="top" class="relative z-10">
+
+  <!-- HERO -->
+  <header class="max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-12">
+    <div class="grid lg:grid-cols-2 gap-10 items-center">
+      <div id="heroLeft">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass text-[11px] font-mono text-lime-300 mb-6">
+          <span class="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span>
+          v2.0 · WEB EDITION · secrets.choice → crypto.getRandomValues
+        </div>
+        <h1 class="text-5xl sm:text-6xl xl:text-7xl font-bold tracking-tight text-white leading-[1.02]">
+          PASSWORD<br/>
+          <span class="bg-gradient-to-r from-lime-300 via-cyan-300 to-violet-400 bg-clip-text text-transparent animated-gradient">GENERATOR</span>
+        </h1>
+        <p class="mt-5 text-slate-400 text-base sm:text-lg leading-relaxed max-w-lg">
+          The beloved Python script by <span class="text-white font-semibold">MinzaiX</span>, reimagined for the web.
+          Cryptographically secure, lightning-fast, and beautiful — 100% client-side, nothing ever leaves your browser.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-2 font-mono text-[11px]">
+          <span class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300">◈ CSPRNG Secure</span>
+          <span class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300">◈ 94-char charset</span>
+          <span class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300">◈ Zero tracking</span>
+          <span class="px-3 py-1.5 rounded-lg bg-lime-400/10 border border-lime-400/30 text-lime-300">◈ Original 4 modes preserved</span>
+        </div>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="#generator" class="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-lime-400 to-cyan-400 text-[#05070f] font-bold hover:shadow-glow transition-all hover:-translate-y-0.5 flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+            Launch Generator
+          </a>
+          <a href="#code" class="px-7 py-3.5 rounded-2xl glass font-semibold text-white hover:border-lime-400/40 transition-all hover:-translate-y-0.5 flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            View Python Source
+          </a>
+        </div>
+        <div class="mt-6 flex items-center gap-4 text-xs text-slate-500 font-mono">
+          <span><kbd>Space</kbd> generate</span><span><kbd>C</kbd> copy</span><span class="hidden sm:inline"><kbd>1–4</kbd> switch mode</span>
+        </div>
+      </div>
+
+      <!-- Terminal -->
+      <div id="heroRight" class="glass rounded-3xl overflow-hidden shadow-2xl">
+        <div class="flex items-center gap-2 px-5 py-3.5 border-b border-white/10 bg-white/[.02]">
+          <span class="w-3 h-3 rounded-full bg-red-500/80"></span><span class="w-3 h-3 rounded-full bg-amber-400/80"></span><span class="w-3 h-3 rounded-full bg-lime-400/80"></span>
+          <span class="ml-3 font-mono text-xs text-slate-500">minzaix@secure: ~/password_generator.py</span>
+          <span class="ml-auto font-mono text-[10px] px-2 py-1 rounded bg-lime-400/10 text-lime-300 border border-lime-400/20">LIVE DEMO</span>
+        </div>
+        <div class="p-5 sm:p-6 font-mono text-[12.5px] sm:text-[13px] leading-7 min-h-[380px] bg-[#04060d]">
+          <div class="text-slate-500">$ python password_generator.py</div>
+          <div class="text-slate-600">==================================================</div>
+          <div class="text-lime-300 font-bold tracking-widest">  PASSWORD GENERATOR</div>
+          <div class="text-slate-400">  Developed by <span class="text-white">MinzaiX</span> · GitHub: <span class="text-cyan-300">decodewithaayat</span></div>
+          <div class="text-slate-600">==================================================</div>
+          <div class="mt-3 text-slate-300">Choose Password Type:</div>
+          <div class="text-slate-500">  1. Numbers Only &nbsp; 2. Alphabets Only</div>
+          <div class="text-slate-500">  3. Alphanumeric &nbsp; 4. Alphanumeric + Symbols</div>
+          <div class="mt-2 text-slate-300">Enter your choice (1-4): <span class="text-lime-300 font-bold">4</span></div>
+          <div class="text-slate-300">Enter password length: <span class="text-lime-300 font-bold">16</span></div>
+          <div class="mt-3 text-slate-600">==================================================</div>
+          <div class="text-cyan-300 text-[11px] tracking-[.25em]"> GENERATED PASSWORD</div>
+          <div class="text-slate-600">==================================================</div>
+          <div class="py-2 text-lg sm:text-xl font-bold tracking-wide"><span id="terminalPwd" class="bg-gradient-to-r from-lime-300 to-cyan-300 bg-clip-text text-transparent">Xk9#mQ2$vL8@nP4q</span><span class="cursor-blink text-lime-400">▊</span></div>
+          <div class="text-slate-400">Password Strength: <span id="terminalStrength" class="text-lime-300 font-bold">Strong</span></div>
+          <div class="text-slate-600">==================================================</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- stat strip -->
+    <div class="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="glass rounded-2xl p-4 text-center"><div class="text-2xl font-bold text-white font-mono" data-count="94">0</div><div class="text-[11px] font-mono text-slate-500 uppercase tracking-widest mt-1">Max charset size</div></div>
+      <div class="glass rounded-2xl p-4 text-center"><div class="text-2xl font-bold text-white font-mono"><span data-count="10">0</span>B</div><div class="text-[11px] font-mono text-slate-500 uppercase tracking-widest mt-1">Guesses/sec resisted</div></div>
+      <div class="glass rounded-2xl p-4 text-center"><div class="text-2xl font-bold text-lime-300 font-mono"><span data-count="100">0</span>%</div><div class="text-[11px] font-mono text-slate-500 uppercase tracking-widest mt-1">Client-side</div></div>
+      <div class="glass rounded-2xl p-4 text-center"><div class="text-2xl font-bold text-white font-mono"><span data-count="4">0</span> modes</div><div class="text-[11px] font-mono text-slate-500 uppercase tracking-widest mt-1">Faithful to Python</div></div>
+    </div>
+  </header>
+
+  <!-- GENERATOR -->
+  <section id="generator" class="max-w-7xl mx-auto px-4 sm:px-6 py-10 scroll-mt-24">
+    <div class="reveal flex items-end justify-between flex-wrap gap-3 mb-6">
+      <div>
+        <div class="font-mono text-xs text-lime-300 tracking-[.3em] mb-2">// 01 — GENERATOR CORE</div>
+        <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Craft an <span class="bg-gradient-to-r from-lime-300 to-cyan-300 bg-clip-text text-transparent">uncrackable</span> password</h2>
+      </div>
+      <div class="flex items-center gap-2 text-xs font-mono text-slate-500">
+        <span class="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span> CSPRNG ACTIVE · crypto.getRandomValues()
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-[430px_1fr] gap-5 items-start">
+
+      <!-- LEFT: CONTROLS -->
+      <div class="reveal glass rounded-3xl p-6 space-y-7">
+        <!-- modes -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <label class="font-mono text-[11px] tracking-[.2em] text-slate-400">01 · CHOOSE PASSWORD TYPE</label>
+            <span class="font-mono text-[10px] text-slate-600">mirrors input(1-4)</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <button data-choice="1" class="mode-card text-left rounded-2xl border border-white/10 bg-white/[.03] p-3.5 hover:border-white/25">
+              <div class="flex items-start justify-between"><span class="w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center text-cyan-300 font-mono font-bold">12</span><span class="mode-check w-5 h-5 rounded-full bg-lime-400 text-[#05070f] flex items-center justify-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span></div>
+              <div class="mt-2.5 text-sm font-bold text-white">Numbers Only</div>
+              <div class="text-[11px] font-mono text-slate-500">0–9 · PINs & OTPs</div>
+              <div class="mt-1.5 text-[10px] font-mono text-cyan-300/80">charset: 10</div>
+            </button>
+            <button data-choice="2" class="mode-card text-left rounded-2xl border border-white/10 bg-white/[.03] p-3.5 hover:border-white/25">
+              <div class="flex items-start justify-between"><span class="w-9 h-9 rounded-xl bg-violet-400/10 border border-violet-400/20 flex items-center justify-center text-violet-300 font-bold">Aa</span><span class="mode-check w-5 h-5 rounded-full bg-lime-400 text-[#05070f] flex items-center justify-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span></div>
+              <div class="mt-2.5 text-sm font-bold text-white">Alphabets Only</div>
+              <div class="text-[11px] font-mono text-slate-500">a–z A–Z · Memorable</div>
+              <div class="mt-1.5 text-[10px] font-mono text-violet-300/80">charset: 52</div>
+            </button>
+            <button data-choice="3" class="mode-card text-left rounded-2xl border border-white/10 bg-white/[.03] p-3.5 hover:border-white/25">
+              <div class="flex items-start justify-between"><span class="w-9 h-9 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-300 font-mono font-bold text-sm">A1</span><span class="mode-check w-5 h-5 rounded-full bg-lime-400 text-[#05070f] flex items-center justify-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span></div>
+              <div class="mt-2.5 text-sm font-bold text-white">Alphanumeric</div>
+              <div class="text-[11px] font-mono text-slate-500">Letters + digits</div>
+              <div class="mt-1.5 text-[10px] font-mono text-amber-300/80">charset: 62</div>
+            </button>
+            <button data-choice="4" class="mode-card active text-left rounded-2xl border border-white/10 bg-white/[.03] p-3.5 hover:border-white/25">
+              <div class="flex items-start justify-between"><span class="w-9 h-9 rounded-xl bg-lime-400/10 border border-lime-400/20 flex items-center justify-center text-lime-300 font-mono font-bold text-sm">*#</span><span class="mode-check w-5 h-5 rounded-full bg-lime-400 text-[#05070f] flex items-center justify-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span></div>
+              <div class="mt-2.5 text-sm font-bold text-white">Alpha + Symbols <span class="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-lime-400 text-[#05070f] font-mono align-middle">MAX</span></div>
+              <div class="text-[11px] font-mono text-slate-500">Full strength · Recommended</div>
+              <div class="mt-1.5 text-[10px] font-mono text-lime-300/80">charset: 94</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- length -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <label class="font-mono text-[11px] tracking-[.2em] text-slate-400">02 · PASSWORD LENGTH</label>
+            <span class="font-mono text-[10px] text-slate-600">min 4 · like Python</span>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-[#04060d] p-4">
+            <div class="flex items-center gap-4">
+              <div class="text-5xl font-bold font-mono text-white w-20 text-center"><span id="lengthBig">16</span></div>
+              <div class="flex-1">
+                <input id="lengthSlider" type="range" min="4" max="64" value="16" step="1"/>
+                <div class="flex justify-between font-mono text-[10px] text-slate-600 mt-1.5"><span>4 min</span><span>16</span><span>32</span><span>64 max</span></div>
+              </div>
+              <input id="lengthNumber" type="number" min="4" max="128" value="16" class="w-[72px] px-2 py-2 rounded-xl bg-white/5 border border-white/10 font-mono text-center text-white text-sm focus:border-lime-400/60 focus:outline-none"/>
+            </div>
+            <div class="flex gap-2 mt-3">
+              <button data-len="8" class="preset-btn flex-1 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs font-mono text-slate-300 hover:border-lime-400/40">8</button>
+              <button data-len="12" class="preset-btn flex-1 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs font-mono text-slate-300 hover:border-lime-400/40">12</button>
+              <button data-len="16" class="preset-btn active flex-1 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs font-mono text-slate-300 hover:border-lime-400/40">16</button>
+              <button data-len="24" class="preset-btn flex-1 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs font-mono text-slate-300 hover:border-lime-400/40">24</button>
+              <button data-len="32" class="preset-btn flex-1 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs font-mono text-slate-300 hover:border-lime-400/40">32</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- fine tune -->
+        <div>
+          <label class="font-mono text-[11px] tracking-[.2em] text-slate-400">03 · FINE TUNE <span class="text-slate-600">(web extras)</span></label>
+          <div class="mt-3 space-y-2.5">
+            <label class="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/10 bg-white/[.02] cursor-pointer hover:border-white/20 transition-colors">
+              <div><div class="text-sm font-semibold text-white">Guarantee each character type</div><div class="text-[11px] text-slate-500 font-mono">at least 1 of lower · upper · digit · symbol</div></div>
+              <span class="switch"><input id="ensureInclude" type="checkbox" checked/><span class="track"></span></span>
+            </label>
+            <label class="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/10 bg-white/[.02] cursor-pointer hover:border-white/20 transition-colors">
+              <div><div class="text-sm font-semibold text-white">Exclude ambiguous</div><div class="text-[11px] text-slate-500 font-mono">removes Il1 O0o |</div></div>
+              <span class="switch"><input id="excludeAmbiguous" type="checkbox"/><span class="track"></span></span>
+            </label>
+            <label class="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/10 bg-white/[.02] cursor-pointer hover:border-white/20 transition-colors">
+              <div><div class="text-sm font-semibold text-white">Auto-regenerate on change</div><div class="text-[11px] text-slate-500 font-mono">like the Python while-True loop</div></div>
+              <span class="switch"><input id="autoRegen" type="checkbox" checked/><span class="track"></span></span>
+            </label>
+            <div id="symbolEditor" class="p-3 rounded-xl border border-lime-400/20 bg-lime-400/[.03]">
+              <div class="text-xs font-semibold text-lime-200 mb-1.5">Custom symbols <span class="font-mono text-[10px] text-slate-500">(string.punctuation)</span></div>
+              <input id="customSymbols" type="text" spellcheck="false" class="w-full px-3 py-2 rounded-lg bg-[#04060d] border border-white/10 font-mono text-sm text-fuchsia-200 focus:border-lime-400/60 focus:outline-none"/>
+            </div>
+            <div class="p-3 rounded-xl border border-white/10 bg-white/[.02]">
+              <div class="text-xs font-semibold text-white mb-1.5">Exclude characters <span class="font-mono text-[10px] text-slate-500">(optional)</span></div>
+              <input id="excludeChars" type="text" placeholder='e.g. "{}<>/' spellcheck="false" class="w-full px-3 py-2 rounded-lg bg-[#04060d] border border-white/10 font-mono text-sm text-slate-200 placeholder:text-slate-700 focus:border-lime-400/60 focus:outline-none"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- qty + generate -->
+        <div>
+          <label class="font-mono text-[11px] tracking-[.2em] text-slate-400">04 · BATCH SIZE</label>
+          <div class="grid grid-cols-4 gap-2 mt-3">
+            <button data-qty="1" class="qty-btn active py-2 rounded-xl border border-white/10 bg-white/5 font-mono text-sm">1</button>
+            <button data-qty="3" class="qty-btn py-2 rounded-xl border border-white/10 bg-white/5 font-mono text-sm">3</button>
+            <button data-qty="5" class="qty-btn py-2 rounded-xl border border-white/10 bg-white/5 font-mono text-sm">5</button>
+            <button data-qty="10" class="qty-btn py-2 rounded-xl border border-white/10 bg-white/5 font-mono text-sm">10</button>
+          </div>
+        </div>
+
+        <button id="generateBtn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-lime-400 via-lime-300 to-cyan-400 text-[#05070f] font-bold text-lg shadow-glow hover:shadow-[0_0_50px_-10px_rgba(163,230,53,.6)] transition-all flex items-center justify-center gap-2">
+          <svg id="genIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+          GENERATE PASSWORD
+          <kbd class="!bg-black/20 !border-black/20 !text-[#05070f]">Space</kbd>
+        </button>
+      </div>
+
+      <!-- RIGHT: OUTPUT -->
+      <div class="space-y-5">
+        <div class="reveal glass rounded-3xl p-6 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-lime-400 via-cyan-400 to-violet-500"></div>
+          <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-[11px] tracking-[.2em] text-slate-400">GENERATED PASSWORD</span>
+              <span id="pythonVerdict" class="font-mono text-[10px] px-2 py-1 rounded-md bg-lime-400/10 border border-lime-400/30 text-lime-300">PYTHON: STRONG</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="eyeBtn" title="Show / hide" class="w-9 h-9 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center hover:border-cyan-400/40 hover:text-cyan-300 transition-all">
+                <svg id="eyeOpen" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="eyeClosed" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+              <button id="refreshBtn" title="Regenerate" class="w-9 h-9 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center hover:border-lime-400/40 hover:text-lime-300 transition-all">
+                <svg id="refreshIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </button>
+              <button id="copyBtn" class="h-9 px-4 rounded-xl bg-gradient-to-r from-lime-400 to-cyan-400 text-[#05070f] text-sm font-bold flex items-center gap-2 hover:shadow-glow transition-all">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span id="copyBtnText">Copy</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="pwdBox" class="rounded-2xl border border-white/10 bg-[#04060d] p-5 cursor-pointer hover:border-lime-400/30 transition-colors group relative">
+            <div id="pwdDisplay" class="font-mono text-xl sm:text-2xl text-white break-all select-all"></div>
+            <div class="absolute bottom-2 right-3 font-mono text-[10px] text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">click to copy</div>
+          </div>
+          <div class="flex flex-wrap gap-x-5 gap-y-1.5 mt-3 font-mono text-[11px] text-slate-500">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-slate-200"></span>lowercase</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-lime-400"></span>UPPERCASE</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-cyan-400"></span>digits</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-fuchsia-300"></span>symbols</span>
+          </div>
+
+          <!-- strength -->
+          <div class="mt-5 rounded-2xl border border-white/10 bg-white/[.02] p-5">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <div class="flex items-center gap-3">
+                <div class="relative w-14 h-14">
+                  <svg class="w-14 h-14 -rotate-90" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3.5"/><circle id="strengthRing" cx="18" cy="18" r="15.5" fill="none" stroke="#a3e635" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="97.4" stroke-dashoffset="30" style="transition:stroke-dashoffset .8s cubic-bezier(.22,1,.36,1),stroke .4s; filter:drop-shadow(0 0 6px rgba(163,230,53,.6))"/></svg>
+                  <div id="strengthScore" class="absolute inset-0 flex items-center justify-center font-mono font-bold text-white text-sm">0</div>
+                </div>
+                <div>
+                  <div id="strengthLabel" class="text-xl font-bold text-lime-300">Strong</div>
+                  <div id="strengthSub" class="text-xs font-mono text-slate-500">entropy-based verdict</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="font-mono text-[10px] text-slate-500 uppercase tracking-widest">Crack time @10B/s</div>
+                <div id="crackTime" class="font-mono font-bold text-white text-sm">—</div>
+              </div>
+            </div>
+            <div class="h-2.5 rounded-full bg-white/5 overflow-hidden border border-white/5">
+              <div id="strengthFill" class="h-full rounded-full bg-gradient-to-r from-lime-400 to-cyan-400" style="width:10%"></div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
+              <div class="rounded-xl bg-[#04060d] border border-white/10 p-3 text-center"><div class="font-mono text-[10px] text-slate-500 uppercase">Length</div><div id="statLength" class="font-mono font-bold text-white text-lg">16</div></div>
+              <div class="rounded-xl bg-[#04060d] border border-white/10 p-3 text-center"><div class="font-mono text-[10px] text-slate-500 uppercase">Charset</div><div id="statCharset" class="font-mono font-bold text-cyan-300 text-lg">94</div></div>
+              <div class="rounded-xl bg-[#04060d] border border-white/10 p-3 text-center"><div class="font-mono text-[10px] text-slate-500 uppercase">Entropy</div><div id="statEntropy" class="font-mono font-bold text-lime-300 text-lg">105<span class="text-xs text-slate-500"> bits</span></div></div>
+              <div class="rounded-xl bg-[#04060d] border border-white/10 p-3 text-center"><div class="font-mono text-[10px] text-slate-500 uppercase">Combos</div><div id="statCombos" class="font-mono font-bold text-violet-300 text-sm pt-1">—</div></div>
+            </div>
+            <div class="mt-3">
+              <div class="font-mono text-[10px] text-slate-500 uppercase tracking-widest mb-1.5">Active charset preview</div>
+              <div id="charsetPreview" class="font-mono text-[11px] text-slate-400 bg-[#04060d] border border-white/10 rounded-xl p-2.5 break-all leading-relaxed max-h-[64px] overflow-y-auto"></div>
+              <div id="charsetPills" class="flex flex-wrap gap-1.5 mt-2"></div>
+            </div>
+          </div>
+
+          <!-- bulk -->
+          <div id="bulkWrap" class="hidden mt-5">
+            <div class="font-mono text-[11px] tracking-[.2em] text-slate-400 mb-2.5">BATCH OUTPUT · <span id="bulkCount">0</span> PASSWORDS</div>
+            <div id="bulkGrid" class="grid sm:grid-cols-2 gap-2"></div>
+          </div>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="reveal glass rounded-3xl p-6">
+          <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#a3e635" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span class="font-bold text-white">Session History</span>
+              <span id="historyCount" class="font-mono text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">0</span>
+            </div>
+            <div class="flex gap-2">
+              <button id="downloadBtn" class="text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:border-cyan-400/40 hover:text-cyan-300 transition-all">⤓ Export .txt</button>
+              <button id="clearHistoryBtn" class="text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:border-red-400/40 hover:text-red-300 transition-all">Clear</button>
+            </div>
+          </div>
+          <div id="historyEmpty" class="text-center py-8 text-slate-600 font-mono text-sm">
+            <div class="text-3xl mb-2 opacity-30">◌</div>
+            No passwords yet — press <kbd>Space</kbd> to generate your first one
+          </div>
+          <div id="historyList" class="space-y-2 max-h-[280px] overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ANALYZER -->
+  <section id="analyzer" class="max-w-7xl mx-auto px-4 sm:px-6 py-10 scroll-mt-24">
+    <div class="reveal glass rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+      <div class="absolute -top-24 -right-24 w-72 h-72 bg-violet-600/15 rounded-full blur-[80px] pointer-events-none"></div>
+      <div class="font-mono text-xs text-cyan-300 tracking-[.3em] mb-2">// 02 — STRENGTH ANALYZER</div>
+      <h2 class="text-3xl font-bold text-white tracking-tight">Test <span class="bg-gradient-to-r from-cyan-300 to-violet-400 bg-clip-text text-transparent">any</span> password</h2>
+      <p class="text-slate-400 text-sm mt-2 max-w-xl">Paste an existing password to audit it. Analysis runs locally — nothing is sent anywhere.</p>
+      <div class="grid lg:grid-cols-2 gap-5 mt-6">
+        <div>
+          <div class="relative">
+            <input id="analyzerInput" type="text" placeholder="Type or paste a password to analyze…" spellcheck="false" autocomplete="off" class="w-full px-5 py-4 rounded-2xl bg-[#04060d] border border-white/10 font-mono text-white placeholder:text-slate-700 focus:border-cyan-400/60 focus:outline-none pr-14"/>
+            <button id="analyzerEye" class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-slate-400 hover:text-cyan-300 transition-colors">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <button data-test="password123" class="test-pwd text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:border-red-400/40 transition-all">try: password123</button>
+            <button data-test="Tr7$mK9!qW2#xVb4@" class="test-pwd text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:border-lime-400/40 transition-all">try: strong sample</button>
+            <button data-test="correct-horse-battery-staple-99" class="test-pwd text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:border-cyan-400/40 transition-all">try: passphrase</button>
+          </div>
+          <div class="mt-4 rounded-2xl border border-white/10 bg-[#04060d] p-4">
+            <div class="flex items-center justify-between mb-2"><span class="font-mono text-[11px] text-slate-500">SCORE</span><span id="anScoreText" class="font-mono font-bold text-white">— / 100</span></div>
+            <div class="h-3 rounded-full bg-white/5 overflow-hidden border border-white/5"><div id="anFill" class="h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-lime-400" style="width:0%; transition:width .6s cubic-bezier(.22,1,.36,1)"></div></div>
+            <div class="grid grid-cols-3 gap-2 mt-3 text-center">
+              <div><div class="font-mono text-[10px] text-slate-500">ENTROPY</div><div id="anEntropy" class="font-mono font-bold text-white text-sm">—</div></div>
+              <div><div class="font-mono text-[10px] text-slate-500">CRACK TIME</div><div id="anCrack" class="font-mono font-bold text-white text-sm">—</div></div>
+              <div><div class="font-mono text-[10px] text-slate-500">PYTHON SAYS</div><div id="anPython" class="font-mono font-bold text-sm text-slate-300">—</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[.02] p-5">
+          <div class="font-mono text-[11px] tracking-[.2em] text-slate-400 mb-3">AUDIT FEEDBACK</div>
+          <ul id="analyzerFeedback" class="space-y-2 text-sm"><li class="text-slate-600 font-mono text-xs">Awaiting input…</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CODE -->
+  <section id="code" class="max-w-7xl mx-auto px-4 sm:px-6 py-10 scroll-mt-24">
+    <div class="reveal text-center mb-6">
+      <div class="font-mono text-xs text-lime-300 tracking-[.3em] mb-2">// 03 — UNDER THE HOOD</div>
+      <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Python logic, <span class="bg-gradient-to-r from-lime-300 to-cyan-300 bg-clip-text text-transparent">faithfully converted</span></h2>
+      <p class="text-slate-400 text-sm mt-2 max-w-2xl mx-auto">The <span class="font-mono text-slate-300">while True</span> loop became event listeners · <span class="font-mono text-slate-300">input()</span> became UI controls · <span class="font-mono text-slate-300">secrets.choice()</span> became <span class="font-mono text-slate-300">crypto.getRandomValues()</span>.</p>
+      <div class="inline-flex gap-1 p-1 rounded-xl glass mt-5">
+        <button id="tabPython" class="tab-btn active px-6 py-2 rounded-lg text-sm font-mono transition-all">🐍 original .py</button>
+        <button id="tabJs" class="tab-btn px-6 py-2 rounded-lg text-sm font-mono text-slate-400 transition-all">⚡ web .js</button>
+      </div>
+    </div>
+    <div class="reveal glass rounded-3xl overflow-hidden">
+      <div class="flex items-center gap-2 px-5 py-3 border-b border-white/10 bg-white/[.02]">
+        <span class="w-3 h-3 rounded-full bg-red-500/80"></span><span class="w-3 h-3 rounded-full bg-amber-400/80"></span><span class="w-3 h-3 rounded-full bg-lime-400/80"></span>
+        <span id="codeFileName" class="ml-3 font-mono text-xs text-slate-500">password_generator.py — by MinzaiX</span>
+        <button id="copyCodeBtn" class="ml-auto text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:border-lime-400/40 hover:text-lime-300 transition-all">Copy code</button>
+      </div>
+      <div class="grid md:grid-cols-[1fr_280px]">
+        <pre id="codePython" class="p-5 overflow-x-auto max-h-[480px] overflow-y-auto !bg-[#04060d] !m-0"><code class="language-python"></code></pre>
+        <pre id="codeJs" class="hidden p-5 overflow-x-auto max-h-[480px] overflow-y-auto !bg-[#04060d] !m-0"><code class="language-javascript"></code></pre>
+        <div class="border-t md:border-t-0 md:border-l border-white/10 p-5 bg-white/[.01] space-y-4 text-sm">
+          <div class="font-mono text-[11px] tracking-[.2em] text-slate-500">CONVERSION MAP</div>
+          <div class="space-y-3 font-mono text-xs">
+            <div class="p-3 rounded-xl bg-[#04060d] border border-white/10"><div class="text-violet-300">string.digits / ascii_letters / punctuation</div><div class="text-slate-600 my-1">↓ becomes ↓</div><div class="text-lime-300">const CHAR_SETS = {...}</div></div>
+            <div class="p-3 rounded-xl bg-[#04060d] border border-white/10"><div class="text-violet-300">secrets.choice(chars)</div><div class="text-slate-600 my-1">↓ becomes ↓</div><div class="text-lime-300">secureChoice() via getRandomValues</div></div>
+            <div class="p-3 rounded-xl bg-[#04060d] border border-white/10"><div class="text-violet-300">if length &lt; 8 / &lt; 12</div><div class="text-slate-600 my-1">↓ becomes ↓</div><div class="text-lime-300">pythonVerdict() + entropy meter</div></div>
+            <div class="p-3 rounded-xl bg-[#04060d] border border-white/10"><div class="text-violet-300">while True + input(y/n)</div><div class="text-slate-600 my-1">↓ becomes ↓</div><div class="text-lime-300">Generate btn + Space shortcut</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIPS -->
+  <section id="tips" class="max-w-7xl mx-auto px-4 sm:px-6 py-10 scroll-mt-24">
+    <div class="reveal mb-6">
+      <div class="font-mono text-xs text-lime-300 tracking-[.3em] mb-2">// 04 — FIELD MANUAL</div>
+      <h2 class="text-3xl font-bold text-white tracking-tight">Security tips from the vault</h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="reveal tip-card glass rounded-2xl p-5"><div class="w-11 h-11 rounded-xl bg-lime-400/10 border border-lime-400/20 flex items-center justify-center text-lime-300 font-mono font-bold text-lg mb-3">16+</div><div class="font-bold text-white mb-1">Go long, not complex</div><p class="text-xs text-slate-400 leading-relaxed">Every extra character multiplies crack time. 16+ chars with full charset = centuries to brute-force.</p></div>
+      <div class="reveal tip-card glass rounded-2xl p-5"><div class="w-11 h-11 rounded-xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center text-cyan-300 font-bold text-lg mb-3">≠</div><div class="font-bold text-white mb-1">Unique per site</div><p class="text-xs text-slate-400 leading-relaxed">One breach shouldn't unlock your whole life. Generate a fresh password for every account.</p></div>
+      <div class="reveal tip-card glass rounded-2xl p-5"><div class="w-11 h-11 rounded-xl bg-violet-400/10 border border-violet-400/20 flex items-center justify-center text-violet-300 font-bold text-lg mb-3">◈</div><div class="font-bold text-white mb-1">Use a manager</div><p class="text-xs text-slate-400 leading-relaxed">Humans can't memorize 100 strong passwords. Bitwarden, 1Password or KeePassXC can.</p></div>
+      <div class="reveal tip-card glass rounded-2xl p-5"><div class="w-11 h-11 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-300 font-bold text-lg mb-3">2FA</div><div class="font-bold text-white mb-1">Enable 2FA always</div><p class="text-xs text-slate-400 leading-relaxed">Even a strong password can leak. A second factor (authenticator / key) stops 99% of takeovers.</p></div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-white/5 mt-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+      <div class="glass rounded-3xl p-8 text-center relative overflow-hidden">
+        <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-lime-400 to-transparent"></div>
+        <div class="font-mono text-xs text-slate-500 tracking-[.3em] mb-3">THANK YOU FOR USING PASSWORD GENERATOR</div>
+        <div class="text-2xl font-bold text-white">Developed by <span class="bg-gradient-to-r from-lime-300 to-cyan-300 bg-clip-text text-transparent">MinzaiX</span></div>
+        <a href="https://github.com/decodewithaayat" target="_blank" class="inline-flex items-center gap-2 mt-3 font-mono text-sm text-slate-400 hover:text-lime-300 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55v-2.15c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.69 1.25 3.35.95.1-.74.4-1.25.72-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.78 0c2.21-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12v3.15c0 .3.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+          github.com/decodewithaayat
+        </a>
+        <div class="mt-5 flex items-center justify-center gap-2 font-mono text-[11px] text-slate-600 flex-wrap">
+          <span>Python password_generator.py</span><span class="text-lime-500">→</span><span>Single-file web app</span><span class="text-slate-700">·</span><span>100% client-side</span><span class="text-slate-700">·</span><span>CSPRNG</span>
+        </div>
+      </div>
+      <div class="text-center font-mono text-[11px] text-slate-700 mt-6">© 2026 MinzaiX · Crafted with secure randomness · Press <span class="text-slate-500">Space</span> anywhere to generate</div>
+    </div>
+  </footer>
+</main>
+
+<button id="toTop" class="fixed bottom-6 left-6 z-40 w-11 h-11 rounded-xl glass-strong items-center justify-center hover:border-lime-400/40 transition-all hidden">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a3e635" stroke-width="2.5" class="mx-auto"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+<div id="toastContainer" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-2.5 items-end max-w-[calc(100vw-3rem)]"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script>
+/* ============================================================
+   MinzaiX Password Generator — Web Edition
+   Faithful conversion of password_generator.py
+   secrets.choice  →  crypto.getRandomValues (CSPRNG)
+============================================================ */
+(function(){
+"use strict";
+
+/* ---------- CHAR SETS (mirror Python `string` module) ---------- */
+const DIGITS = "0123456789";
+const LOWER  = "abcdefghijklmnopqrstuvwxyz";
+const UPPER  = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const LETTERS = LOWER + UPPER;
+const PUNCT_DEFAULT = "!\"#$%&'()*+,-./:;<=>?@[" + "\\" + "]^_`{|}~";
+const AMBIGUOUS = "Il1O0o|";
+
+const state = { choice:"4", length:16, qty:1, visible:true, current:"", sound:true, generating:false };
+let history = [];
+try{ const s = localStorage.getItem("minzaix_history"); if(s) history = JSON.parse(s).slice(0,20); }catch(e){}
+
+/* ---------- ELEMENTS ---------- */
+const $ = id => document.getElementById(id);
+const els = {
+  slider:$("lengthSlider"), num:$("lengthNumber"), big:$("lengthBig"),
+  display:$("pwdDisplay"), pwdBox:$("pwdBox"),
+  fill:$("strengthFill"), ring:$("strengthRing"), score:$("strengthScore"),
+  label:$("strengthLabel"), sub:$("strengthSub"), crack:$("crackTime"),
+  sLen:$("statLength"), sCharset:$("statCharset"), sEntropy:$("statEntropy"), sCombos:$("statCombos"),
+  pyVerdict:$("pythonVerdict"), preview:$("charsetPreview"), pills:$("charsetPills"),
+  historyList:$("historyList"), historyEmpty:$("historyEmpty"), historyCount:$("historyCount"),
+  bulkWrap:$("bulkWrap"), bulkGrid:$("bulkGrid"), bulkCount:$("bulkCount"),
+  customSymbols:$("customSymbols"), excludeChars:$("excludeChars"),
+  ensure:$("ensureInclude"), exclAmb:$("excludeAmbiguous"), auto:$("autoRegen"),
+  symbolEditor:$("symbolEditor")
+};
+els.customSymbols.value = PUNCT_DEFAULT;
+
+/* ---------- SECURE RANDOM (replaces secrets.choice) ---------- */
+function secureInt(max){
+  if(max<=0) return 0;
+  if(max===1) return 0;
+  const range = Math.floor(4294967296/max)*max;
+  const a = new Uint32Array(1);
+  let x;
+  do{ crypto.getRandomValues(a); x=a[0]; }while(x>=range);
+  return x%max;
+}
+const secureChoice = s => s[secureInt(s.length)];
+
+/* ---------- SOUND (tiny synth) ---------- */
+let actx=null;
+function blip(freq,dur,type){
+  if(!state.sound) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type=type||"sine"; o.frequency.value=freq;
+    g.gain.setValueAtTime(0.08,actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+dur);
+    o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime+dur);
+  }catch(e){}
+}
+const sndGen=()=>{blip(520,.09);setTimeout(()=>blip(780,.11),70);};
+const sndCopy=()=>{blip(880,.08,"triangle");};
+
+/* ---------- TOAST ---------- */
+function toast(msg,type){
+  const c=$("toastContainer");
+  const colors={success:"border-lime-400/50",error:"border-red-400/60",info:"border-cyan-400/50"};
+  const dots={success:"bg-lime-400",error:"bg-red-400",info:"bg-cyan-400"};
+  const t=document.createElement("div");
+  t.className=`toast glass-strong rounded-xl px-4 py-3 flex items-center gap-3 border ${colors[type]||colors.info} shadow-2xl max-w-sm`;
+  t.innerHTML=`<span class="w-2.5 h-2.5 rounded-full ${dots[type]||dots.info} animate-pulse flex-shrink-0"></span><span class="text-sm text-slate-200 font-medium">${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.classList.add("out");setTimeout(()=>t.remove(),320);},2800);
+}
+
+/* ---------- COPY ---------- */
+async function copyText(text,label){
+  if(!text){toast("Nothing to copy yet","error");return false;}
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(_){}ta.remove();
+  }
+  sndCopy();
+  const b=$("copyBtnText"); const old=b.textContent; b.textContent="Copied ✓";
+  setTimeout(()=>b.textContent=old,1400);
+  toast((label||"Password")+" copied to clipboard","success");
+  return true;
+}
+
+/* ---------- CHARSET BUILDER (mirrors if choice == "1"...) ---------- */
+function getRequiredSets(choice){
+  if(choice==="1") return [DIGITS];
+  if(choice==="2") return [LOWER,UPPER];
+  if(choice==="3") return [LETTERS,DIGITS];
+  return [LOWER,UPPER,DIGITS,els.customSymbols.value||PUNCT_DEFAULT];
+}
+function buildCharset(){
+  const choice=state.choice;
+  let base="", parts=[];
+  if(choice==="1"){ base=DIGITS; parts=[["Digits",10,"cyan"]]; }
+  else if(choice==="2"){ base=LETTERS; parts=[["Lower a–z",26,"slate"],["Upper A–Z",26,"lime"]]; }
+  else if(choice==="3"){ base=LETTERS+DIGITS; parts=[["Letters",52,"lime"],["Digits",10,"cyan"]]; }
+  else{ const sym=els.customSymbols.value||PUNCT_DEFAULT; base=LETTERS+DIGITS+sym; parts=[["Lower a–z",26,"slate"],["Upper A–Z",26,"lime"],["Digits",10,"cyan"],["Symbols",sym.length,"fuchsia"]]; }
+  let chars=base;
+  if(els.exclAmb.checked) chars=chars.split("").filter(c=>!AMBIGUOUS.includes(c)).join("");
+  const ex=els.excludeChars.value||"";
+  if(ex) chars=chars.split("").filter(c=>!ex.includes(c)).join("");
+  chars=[...new Set(chars)].join("");
+  if(chars.length<4){ chars=base; toast("Filter too aggressive — charset restored","error"); }
+  return {chars, size:chars.length, parts};
+}
+
+/* ---------- PASSWORD GENERATION (mirrors for i in range(length)) ---------- */
+function generateSecurePassword(chars,length,requiredSets){
+  const arr=[];
+  for(let i=0;i<length;i++) arr.push(secureChoice(chars)); // ← the Python loop
+  if(els.ensure.checked && requiredSets.length>1){
+    requiredSets.forEach(set=>{
+      const usable=[...set].filter(c=>chars.includes(c)).join("");
+      if(!usable) return;
+      if(!arr.some(ch=>usable.includes(ch))) arr[secureInt(arr.length)]=secureChoice(usable);
+    });
+    for(let i=arr.length-1;i>0;i--){ const j=secureInt(i+1); const t=arr[i];arr[i]=arr[j];arr[j]=t; }
+  }
+  return arr.join("");
+}
+
+/* ---------- STRENGTH (original + advanced) ---------- */
+function pythonVerdict(len){ // ← EXACT Python rule
+  if(len<8) return {label:"Weak",color:"#f87171"};
+  if(len<12) return {label:"Medium",color:"#fbbf24"};
+  return {label:"Strong",color:"#a3e635"};
+}
+function advancedVerdict(entropy){
+  if(entropy<40)  return {label:"Weak",color:"#f87171",sub:"crackable fast — go longer"};
+  if(entropy<60)  return {label:"Fair",color:"#fb923c",sub:"okay for low-value accounts"};
+  if(entropy<80)  return {label:"Good",color:"#fbbf24",sub:"solid everyday password"};
+  if(entropy<100) return {label:"Strong",color:"#a3e635",sub:"excellent — brute-force resistant"};
+  if(entropy<140) return {label:"Fortress",color:"#22d3ee",sub:"overkill for most logins"};
+  return {label:"Quantum-grade",color:"#c084fc",sub:"heat-death-of-universe tier"};
+}
+function crackSeconds(entropy){
+  if(entropy>300) return Infinity;
+  return Math.pow(2,entropy-1)/1e10; // 10 billion guesses/sec
+}
+function fmtTime(sec){
+  if(!isFinite(sec)) return "eternity+";
+  if(sec<1) return "instant";
+  const u=[[31536000*1e9,"B yrs"],[31536000*1e6,"M yrs"],[31536000,"yrs"],[2592000,"mo"],[86400,"days"],[3600,"hrs"],[60,"min"]];
+  for(const [d,n] of u){ if(sec>=d){ const v=sec/d; return (v>=100?Math.round(v):v.toFixed(1))+" "+n; } }
+  return Math.round(sec)+" sec";
+}
+function fmtCombos(entropy){
+  if(entropy>1000) return "∞";
+  const log10=entropy*Math.LOG10E*Math.LN2;
+  if(log10<6) return Math.round(Math.pow(2,entropy)).toLocaleString();
+  if(log10<12) return (Math.pow(10,log10-9)).toFixed(1)+" B";
+  if(log10<15) return (Math.pow(10,log10-12)).toFixed(1)+" T";
+  return "10^"+Math.round(log10);
+}
+function escapeHtml(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function colorize(pwd){
+  return [...pwd].map(c=>{
+    const e=escapeHtml(c);
+    if(DIGITS.includes(c)) return `<span class="tok-digit">${e}</span>`;
+    if(PUNCT_DEFAULT.includes(c)||els.customSymbols.value.includes(c)) return `<span class="tok-symbol">${e}</span>`;
+    if(c>="A"&&c<="Z") return `<span class="tok-upper">${e}</span>`;
+    return `<span class="tok-lower">${e}</span>`;
+  }).join("");
+}
+
+/* ---------- SCRAMBLE REVEAL ---------- */
+function revealPassword(finalPwd,scrambleChars){
+  return new Promise(res=>{
+    const d=els.display;
+    d.classList.add("generating");
+    let shown=0;
+    const total=Math.max(14,finalPwd.length+10);
+    let f=0;
+    const iv=setInterval(()=>{
+      f++;
+      shown=Math.floor((f/total)*(finalPwd.length+2));
+      let out="";
+      for(let i=0;i<finalPwd.length;i++){
+        out+= i<shown ? finalPwd[i] : scrambleChars[secureInt(scrambleChars.length)];
+      }
+      d.textContent=out;
+      if(f>=total){
+        clearInterval(iv);
+        d.classList.remove("generating");
+        renderPwdDisplay();
+        res();
+      }
+    },28);
+  });
+}
+function renderPwdDisplay(){
+  const pwd=state.current;
+  const d=els.display;
+  if(!state.visible){ d.innerHTML=`<span class="text-slate-600 tracking-[.2em]">${"•".repeat(Math.min(pwd.length,64))}</span>`; return; }
+  d.innerHTML=colorize(pwd);
+  d.style.fontSize = pwd.length>40 ? "14px" : pwd.length>28 ? "17px" : pwd.length>20 ? "19px" : "";
+}
+
+/* ---------- UPDATE STATS ---------- */
+function updateStats(pwd,charsetSize,parts){
+  const len=pwd.length;
+  const entropy=len*Math.log2(Math.max(2,charsetSize));
+  const py=pythonVerdict(len), adv=advancedVerdict(entropy);
+  const pct=Math.min(100,Math.round(entropy/1.28));
+  els.fill.style.width=pct+"%";
+  els.fill.style.background=`linear-gradient(90deg,${adv.color},${adv.color}cc)`;
+  els.fill.style.boxShadow=`0 0 18px ${adv.color}66`;
+  els.ring.style.strokeDashoffset=(97.4*(1-pct/100)).toFixed(1);
+  els.ring.style.stroke=adv.color;
+  els.score.textContent=pct;
+  els.label.textContent=adv.label; els.label.style.color=adv.color;
+  els.sub.textContent=adv.sub;
+  els.crack.textContent=fmtTime(crackSeconds(entropy));
+  els.sLen.textContent=len;
+  els.sCharset.textContent=charsetSize;
+  els.sEntropy.innerHTML=Math.round(entropy)+'<span class="text-xs text-slate-500"> bits</span>';
+  els.sCombos.textContent=fmtCombos(entropy);
+  els.pyVerdict.textContent="PYTHON: "+py.label.toUpperCase();
+  els.pyVerdict.style.color=py.color; els.pyVerdict.style.borderColor=py.color+"55";
+  return {entropy,py,adv};
+}
+
+/* ---------- CHARSET PREVIEW ---------- */
+function updateCharsetUI(){
+  const {chars,size,parts}=buildCharset();
+  els.preview.textContent=chars;
+  const cmap={cyan:"text-cyan-300 border-cyan-400/25 bg-cyan-400/5",lime:"text-lime-300 border-lime-400/25 bg-lime-400/5",fuchsia:"text-fuchsia-300 border-fuchsia-400/25 bg-fuchsia-400/5",slate:"text-slate-300 border-white/10 bg-white/5"};
+  els.pills.innerHTML=parts.map(([n,c,k])=>`<span class="font-mono text-[10px] px-2 py-1 rounded-md border ${cmap[k]}">${n} · ${c}</span>`).join("")+
+    `<span class="font-mono text-[10px] px-2 py-1 rounded-md border border-white/15 bg-white/5 text-white font-bold">TOTAL · ${size}</span>`;
+  els.symbolEditor.style.display = state.choice==="4" ? "block":"none";
+}
+
+/* ---------- HISTORY ---------- */
+function saveHistory(){ try{localStorage.setItem("minzaix_history",JSON.stringify(history.slice(0,20)));}catch(e){} }
+function timeAgo(t){ const s=(Date.now()-t)/1000; if(s<10)return"just now"; if(s<60)return Math.floor(s)+"s ago"; if(s<3600)return Math.floor(s/60)+"m ago"; return new Date(t).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}); }
+function addHistory(pwd,meta){
+  history.unshift({pwd,mode:state.choice,len:pwd.length,entropy:Math.round(meta.entropy),verdict:meta.adv.label,color:meta.adv.color,time:Date.now()});
+  history=history.slice(0,20); saveHistory(); renderHistory();
+}
+function renderHistory(){
+  els.historyCount.textContent=history.length;
+  els.historyEmpty.style.display=history.length?"none":"block";
+  els.historyList.innerHTML=history.map((h,i)=>{
+    const short=h.pwd.length>34?h.pwd.slice(0,34)+"…":h.pwd;
+    return `<div class="history-item flex items-center gap-3 p-2.5 rounded-xl border border-white/10 bg-white/[.02]">
+      <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${h.color};box-shadow:0 0 8px ${h.color}"></span>
+      <span class="font-mono text-[13px] text-slate-200 truncate flex-1" title="${escapeHtml(h.pwd)}">${escapeHtml(short)}</span>
+      <span class="font-mono text-[10px] text-slate-500 hidden sm:inline">M${h.mode}·${h.len}·${h.entropy}b</span>
+      <button data-copy="${i}" class="h-copy text-[11px] font-mono px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:border-lime-400/40 hover:text-lime-300 transition-all">Copy</button>
+      <button data-del="${i}" class="h-del w-8 h-8 rounded-lg border border-white/10 bg-white/5 hover:border-red-400/40 hover:text-red-300 transition-all text-slate-500">✕</button>
+    </div>`;
+  }).join("");
+  els.historyList.querySelectorAll(".h-copy").forEach(b=>b.onclick=e=>{e.stopPropagation();copyText(history[+b.dataset.copy].pwd,"History password");});
+  els.historyList.querySelectorAll(".h-del").forEach(b=>b.onclick=e=>{e.stopPropagation();history.splice(+b.dataset.del,1);saveHistory();renderHistory();});
+}
+
+/* ---------- MAIN GENERATE ---------- */
+async function generate(fromAuto){
+  if(state.generating) return;
+  // ← mirrors: length = int(input(...)) + validation
+  let len=parseInt(els.num.value,10);
+  if(isNaN(len)){ els.num.classList.add("shake"); setTimeout(()=>els.num.classList.remove("shake"),450); toast("❌ Please enter a number.","error"); return; }
+  if(len<4){ els.num.classList.add("shake"); setTimeout(()=>els.num.classList.remove("shake"),450); toast("❌ Password length should be at least 4.","error"); return; }
+  if(len>128){ len=128; els.num.value=128; toast("Length capped at 128 for display safety","info"); }
+  state.length=len; els.big.textContent=len>64?len:len;
+  if(len<=64){ els.slider.value=len; paintSlider(); }
+  syncPresets();
+
+  state.generating=true;
+  $("genIcon").classList.add("spinning"); $("refreshIcon").classList.add("spinning");
+  setTimeout(()=>{$("genIcon").classList.remove("spinning");$("refreshIcon").classList.remove("spinning");},650);
+  if(!fromAuto) sndGen();
+
+  const {chars,size,parts}=buildCharset();
+  const req=getRequiredSets(state.choice);
+  const main=generateSecurePassword(chars,len,req);
+  state.current=main;
+  updateCharsetUI();
+  const meta=updateStats(main,size,parts);
+
+  await revealPassword(main,chars);
+
+  // batch
+  if(state.qty>1){
+    els.bulkWrap.classList.remove("hidden");
+    els.bulkCount.textContent=state.qty;
+    let html="";
+    for(let i=0;i<state.qty;i++){
+      const p=i===0?main:generateSecurePassword(chars,len,req);
+      html+=`<div class="flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-[#04060d] group">
+        <span class="font-mono text-xs text-slate-300 truncate flex-1">${escapeHtml(p)}</span>
+        <button data-bulk="${escapeHtml(p)}" class="b-copy text-[10px] font-mono px-2 py-1 rounded-md border border-white/10 bg-white/5 hover:border-lime-400/40 hover:text-lime-300 transition-all flex-shrink-0">Copy</button>
+      </div>`;
+    }
+    els.bulkGrid.innerHTML=html;
+    els.bulkGrid.querySelectorAll(".b-copy").forEach(b=>b.onclick=()=>copyText(b.dataset.bulk,"Batch password"));
+  } else els.bulkWrap.classList.add("hidden");
+
+  addHistory(main,meta);
+  state.generating=false;
+}
+
+/* ---------- LENGTH / MODE / QTY WIRING ---------- */
+function paintSlider(){
+  const s=els.slider, pct=((s.value-s.min)/(s.max-s.min))*100;
+  s.style.setProperty("--fill",pct+"%");
+}
+function syncPresets(){
+  document.querySelectorAll(".preset-btn").forEach(b=>b.classList.toggle("active",+b.dataset.len===state.length));
+}
+function setChoice(c,skipGen){
+  state.choice=c;
+  document.querySelectorAll(".mode-card").forEach(m=>m.classList.toggle("active",m.dataset.choice===c));
+  updateCharsetUI();
+  if(!skipGen && els.auto.checked) generate(true);
+}
+document.querySelectorAll(".mode-card").forEach(m=>{
+  m.addEventListener("click",()=>{ setChoice(m.dataset.choice); blip(660,.07); });
+  m.addEventListener("mousemove",e=>{ const r=m.getBoundingClientRect(); m.style.setProperty("--mx",(e.clientX-r.left)+"px"); m.style.setProperty("--my",(e.clientY-r.top)+"px"); });
+});
+let deb=null;
+els.slider.addEventListener("input",()=>{ paintSlider(); els.num.value=els.slider.value; els.big.textContent=els.slider.value; state.length=+els.slider.value; syncPresets(); clearTimeout(deb); deb=setTimeout(()=>{ if(els.auto.checked) generate(true); },320); });
+els.num.addEventListener("change",()=>generate(true));
+document.querySelectorAll(".preset-btn").forEach(b=>b.onclick=()=>{ els.slider.value=b.dataset.len; els.num.value=b.dataset.len; paintSlider(); state.length=+b.dataset.len; syncPresets(); els.big.textContent=b.dataset.len; if(els.auto.checked) generate(true); else syncPresets(); });
+document.querySelectorAll(".qty-btn").forEach(b=>b.onclick=()=>{ state.qty=+b.dataset.qty; document.querySelectorAll(".qty-btn").forEach(x=>x.classList.toggle("active",x===b)); if(els.auto.checked) generate(true); });
+[els.ensure,els.exclAmb].forEach(el=>el.addEventListener("change",()=>{ updateCharsetUI(); if(els.auto.checked) generate(true); }));
+els.customSymbols.addEventListener("input",()=>{ updateCharsetUI(); clearTimeout(deb); deb=setTimeout(()=>{if(els.auto.checked)generate(true);},500); });
+els.excludeChars.addEventListener("input",()=>{ updateCharsetUI(); clearTimeout(deb); deb=setTimeout(()=>{if(els.auto.checked)generate(true);},500); });
+
+$("generateBtn").onclick=()=>generate(false);
+$("refreshBtn").onclick=()=>generate(false);
+$("copyBtn").onclick=()=>copyText(state.current);
+els.pwdBox.onclick=()=>copyText(state.current);
+$("eyeBtn").onclick=()=>{
+  state.visible=!state.visible;
+  $("eyeOpen").classList.toggle("hidden",!state.visible);
+  $("eyeClosed").classList.toggle("hidden",state.visible);
+  renderPwdDisplay();
+};
+$("clearHistoryBtn").onclick=()=>{ history=[]; saveHistory(); renderHistory(); toast("History cleared","info"); };
+$("downloadBtn").onclick=()=>{
+  if(!history.length){toast("History is empty","error");return;}
+  const txt=`MinzaiX Password Generator — Export\n${"=".repeat(45)}\n\n`+history.map((h,i)=>`[${i+1}] ${h.pwd}\n    Mode: ${h.mode} | Length: ${h.len} | Entropy: ${h.entropy} bits | ${h.verdict} | ${new Date(h.time).toLocaleString()}`).join("\n\n")+`\n\n${"=".repeat(45)}\nDeveloped by MinzaiX | github.com/decodewithaayat`;
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([txt],{type:"text/plain"})); a.download="minzaix-passwords.txt"; a.click();
+  toast("History exported as .txt","success");
+};
+
+/* ---------- KEYBOARD ---------- */
+document.addEventListener("keydown",e=>{
+  const typing=/INPUT|TEXTAREA/.test(document.activeElement.tagName);
+  if(e.code==="Space" && !typing){ e.preventDefault(); generate(false); }
+  else if((e.key==="c"||e.key==="C") && !typing){ copyText(state.current); }
+  else if(["1","2","3","4"].includes(e.key) && !typing){ setChoice(e.key); }
+});
+
+/* ---------- ANALYZER ---------- */
+const COMMON=["password","123456","123456789","qwerty","abc123","password123","admin","letmein","welcome","monkey","dragon","master","football","12345678","111111","123123","654321","superman","michael","jesus"];
+function analyze(pwd){
+  const len=pwd.length;
+  const hasL=/[a-z]/.test(pwd),hasU=/[A-Z]/.test(pwd),hasD=/[0-9]/.test(pwd),hasS=/[^a-zA-Z0-9]/.test(pwd);
+  const variety=[hasL,hasU,hasD,hasS].filter(Boolean).length;
+  const cs=(hasL?26:0)+(hasU?26:0)+(hasD?10:0)+(hasS?32:0);
+  const entropy=len*Math.log2(Math.max(2,cs));
+  let score=Math.min(100,Math.round(entropy/1.28));
+  const fb=[];
+  const push=(ok,txt)=>fb.push({ok,txt});
+  if(!len){return{score:0,entropy:0,cs:0,fb:[{ok:null,txt:"Awaiting input…"}]};}
+  push(len>=12,`Length ${len} — ${len<8?"too short (Python flags <8 as Weak)":len<12?"decent, but 12+ recommended (Python: Medium)":"excellent length (Python: Strong)"}`);
+  push(hasL&&hasU,"Mixed case (a–z + A–Z)"+((hasL&&hasU)?" detected":" — add both cases"));
+  push(hasD,"Numbers (0–9)"+(hasD?" detected":" — add digits"));
+  push(hasS,"Symbols (!@#$… adds +32 charset)"+(hasS?" detected":" — add symbols"));
+  if(/(.)\1{2,}/.test(pwd)){score-=12;push(false,"Repeated characters (aaa, 111) weaken entropy");}
+  else push(true,"No heavy repetition detected");
+  if(/(123|abc|qwe|asd|password|admin|000|111|321)/i.test(pwd)){score-=15;push(false,"Contains predictable sequence / dictionary word");}
+  else push(true,"No common sequences detected");
+  if(COMMON.includes(pwd.toLowerCase())){score=Math.min(score,8);push(false,"TOP-20 most-breached password — NEVER use this");}
+  else if(len>=12&&variety===4) push(true,"Meets modern strong-password guidelines");
+  if(entropy>=80) push(true,`High entropy (${Math.round(entropy)} bits) — great for critical accounts`);
+  return{score:Math.max(0,Math.min(100,score)),entropy,cs,fb,py:pythonVerdict(len)};
+}
+function updateAnalyzer(){
+  const v=$("analyzerInput").value;
+  const r=analyze(v);
+  $("anFill").style.width=r.score+"%";
+  $("anScoreText").textContent=(v?r.score:"—")+" / 100";
+  $("anEntropy").textContent=v?Math.round(r.entropy)+" bits":"—";
+  $("anCrack").textContent=v?fmtTime(crackSeconds(r.entropy)):"—";
+  const py=$("anPython");
+  if(!v){py.textContent="—";py.style.color="#94a3b8";}
+  else{py.textContent=r.py.label;py.style.color=r.py.color;}
+  $("analyzerFeedback").innerHTML=r.fb.map(f=>`<li class="flex items-start gap-2.5 p-2.5 rounded-xl border ${f.ok===null?"border-white/10 text-slate-600":f.ok?"border-lime-400/15 bg-lime-400/[.03] text-slate-300":"border-red-400/15 bg-red-400/[.03] text-slate-300"}">
+    <span class="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${f.ok===null?"bg-white/5 text-slate-500":f.ok?"bg-lime-400/15 text-lime-300":"bg-red-400/15 text-red-300"}">${f.ok===null?"·":f.ok?"✓":"!"}</span><span class="text-[13px] leading-snug">${f.txt}</span></li>`).join("");
+}
+$("analyzerInput").addEventListener("input",updateAnalyzer);
+document.querySelectorAll(".test-pwd").forEach(b=>b.onclick=()=>{$("analyzerInput").value=b.dataset.test;updateAnalyzer();});
+$("analyzerEye").onclick=()=>{ const i=$("analyzerInput"); i.type=i.type==="password"?"text":"password"; };
+
+/* ---------- CODE TABS ---------- */
+const PY_CODE =
+`import string
+import secrets
+
+# ==================================================
+#  PASSWORD GENERATOR
+#  Developed by MinzaiX
+#  GitHub: decodewithaayat
+# ==================================================
+
+print("""==================================================
+  PASSWORD GENERATOR
+  Developed by MinzaiX
+  GitHub: decodewithaayat
+==================================================""")
+
+while True:
+    print("\\nChoose Password Type:")
+    print("1. Numbers Only")
+    print("2. Alphabets Only")
+    print("3. Alphanumeric")
+    print("4. Alphanumeric + Symbols")
+
+    choice = input("\\nEnter your choice (1-4): ")
+
+    # Select characters
+    if choice == "1":
+        chars = string.digits
+    elif choice == "2":
+        chars = string.ascii_letters
+    elif choice == "3":
+        chars = string.ascii_letters + string.digits
+    elif choice == "4":
+        chars = (string.ascii_letters
+                + string.digits
+                + string.punctuation)
+    else:
+        print("Invalid choice!")
+        continue
+
+    # Password length
+    try:
+        length = int(input("Enter password length: "))
+    except ValueError:
+        print("Please enter a number.")
+        continue
+
+    if length < 4:
+        print("Password length should be at least 4.")
+        continue
+
+    # Generate password
+    password = ""
+    for i in range(length):
+        password += secrets.choice(chars)
+
+    # Display password
+    print("\\n" + "=" * 50)
+    print("  GENERATED PASSWORD")
+    print("=" * 50)
+    print(password)
+
+    # Simple strength
+    if length < 8:
+        print("\\nPassword Strength: Weak")
+    elif length < 12:
+        print("\\nPassword Strength: Medium")
+    else:
+        print("\\nPassword Strength: Strong")
+    print("=" * 50)
+
+    # Generate again
+    again = input("\\nGenerate another password? (y/n): ").lower()
+    if again != "y":
+        print("\\nThank you for using Password Generator!")
+        print("Developed by MinzaiX")
+        break`;
+
+const JS_CODE =
+`/* MinzaiX PassGen — Web Edition (converted from Python)
+   secrets.choice  →  crypto.getRandomValues  (CSPRNG) */
+
+const CHAR_SETS = {
+  1: "0123456789",                                   // string.digits
+  2: "abcdefghijklmnopqrstuvwxyz" +                 // string.ascii_letters
+     "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  3: "abcdefghijklmnopqrstuvwxyz" +
+     "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  4: "abcdefghijklmnopqrstuvwxyz" +                 // + string.punctuation
+     "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" +
+     "!\\"#$%&'()*+,-./:;<=>?@[\\\\]^_\`{|}~"
+};
+
+// Rejection-sampled secure int (bias-free, like secrets)
+function secureInt(max) {
+  const range = Math.floor(4294967296 / max) * max;
+  const a = new Uint32Array(1);
+  let x;
+  do { crypto.getRandomValues(a); x = a[0]; } while (x >= range);
+  return x % max;
+}
+const secureChoice = (s) => s[secureInt(s.length)];
+
+// while True  →  event-driven regenerate
+function generatePassword(choice, length) {
+  if (length < 4) throw new Error(               // if length < 4:
+    "Password length should be at least 4.");    //   ...same message!
+  const chars = CHAR_SETS[choice];               // if choice == "1"...
+  let password = "";
+  for (let i = 0; i < length; i++)               // for i in range(length):
+    password += secureChoice(chars);             //   secrets.choice(chars)
+  return password;
+}
+
+// if length < 8 / elif length < 12  →  preserved verbatim
+const pythonVerdict = (len) =>
+  len < 8 ? "Weak" : len < 12 ? "Medium" : "Strong";
+
+// WEB UPGRADE: real entropy + crack-time science
+const entropy  = (pwd, cs) => pwd.length * Math.log2(cs);
+const crackSec = (ent) => Math.pow(2, ent - 1) / 1e10;
+
+// Space key  →  "Generate another password? (y/n)"
+addEventListener("keydown", (e) => {
+  if (e.code === "Space") generatePassword(state.choice, state.length);
+});`;
+
+document.querySelector("#codePython code").textContent=PY_CODE;
+document.querySelector("#codeJs code").textContent=JS_CODE;
+$("tabPython").onclick=()=>{ $("tabPython").classList.add("active");$("tabPython").classList.remove("text-slate-400");$("tabJs").classList.remove("active");$("tabJs").classList.add("text-slate-400");$("codePython").classList.remove("hidden");$("codeJs").classList.add("hidden");$("codeFileName").textContent="password_generator.py — by MinzaiX"; };
+$("tabJs").onclick=()=>{ $("tabJs").classList.add("active");$("tabJs").classList.remove("text-slate-400");$("tabPython").classList.remove("active");$("tabPython").classList.add("text-slate-400");$("codeJs").classList.remove("hidden");$("codePython").classList.add("hidden");$("codeFileName").textContent="passgen.js — converted for the web"; };
+$("copyCodeBtn").onclick=()=>{ const py=!$("codePython").classList.contains("hidden"); copyText(py?PY_CODE:JS_CODE, py?"Python source":"JS source"); };
+try{ hljs.highlightAll(); }catch(e){}
+
+/* ---------- TERMINAL DEMO LOOP ---------- */
+(function(){
+  const el=$("terminalPwd"), st=$("terminalStrength");
+  const sets="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  setInterval(()=>{
+    let p=""; for(let i=0;i<16;i++) p+=sets[secureInt(sets.length)];
+    el.textContent=p;
+    st.textContent="Strong";
+  },2600);
+})();
+
+/* ---------- PARTICLE BACKGROUND ---------- */
+(function(){
+  const cv=$("bgCanvas"),ctx=cv.getContext("2d");
+  let W,H,pts=[],mouse={x:-999,y:-999};
+  function size(){W=cv.width=innerWidth;H=cv.height=innerHeight;}
+  size();addEventListener("resize",size);
+  addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY;});
+  const N=innerWidth<700?40:80;
+  for(let i=0;i<N;i++)pts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:Math.random()*1.8+.6,hue:Math.random()>.5?"163,230,53":"34,211,238"});
+  (function loop(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;
+      const dx=p.x-mouse.x,dy=p.y-mouse.y,d=Math.hypot(dx,dy);
+      if(d<130){p.x+=dx/d*.6;p.y+=dy/d*.6;}
+      if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fillStyle=`rgba(${p.hue},.5)`;ctx.fill();
+    });
+    for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+      const a=pts[i],b=pts[j],d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(d<120){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=`rgba(163,230,53,${(1-d/120)*.12})`;ctx.lineWidth=1;ctx.stroke();}
+    }
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ---------- SCROLL FX / REVEAL / COUNTERS ---------- */
+const toTop=$("toTop");
+addEventListener("scroll",()=>{
+  const h=document.documentElement;
+  $("scrollProgress").style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+"%";
+  const show=h.scrollTop>600;
+  toTop.classList.toggle("hidden",!show); toTop.classList.toggle("flex",show);
+},{passive:true});
+toTop.onclick=()=>scrollTo({top:0,behavior:"smooth"});
+const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){e.target.classList.add("visible"); io.unobserve(e.target);} }),{threshold:.12});
+document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+const cio=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return; cio.unobserve(e.target);
+  const end=+e.target.dataset.count,t0=performance.now();
+  (function tick(t){ const p=Math.min(1,(t-t0)/1200),v=Math.round(end*(1-Math.pow(1-p,3))); e.target.textContent=v; if(p<1)requestAnimationFrame(tick); })(t0);
+}),{threshold:.5});
+document.querySelectorAll("[data-count]").forEach(el=>cio.observe(el));
+
+/* ---------- NAV / SOUND ---------- */
+$("mobileMenuBtn").onclick=()=>$("mobileMenu").classList.toggle("hidden");
+document.querySelectorAll("#mobileMenu a").forEach(a=>a.onclick=()=>$("mobileMenu").classList.add("hidden"));
+$("soundToggle").onclick=()=>{
+  state.sound=!state.sound;
+  $("soundOnIcon").classList.toggle("hidden",!state.sound);
+  $("soundOffIcon").classList.toggle("hidden",state.sound);
+  toast(state.sound?"Sound on":"Sound off","info");
+};
+
+/* ---------- HERO ENTRANCE ---------- */
+try{
+  gsap.from("#heroLeft",{y:40,opacity:0,duration:1,ease:"power3.out"});
+  gsap.from("#heroRight",{y:40,opacity:0,duration:1,delay:.2,ease:"power3.out"});
+}catch(e){}
+
+/* ---------- INIT ---------- */
+paintSlider(); updateCharsetUI(); renderHistory(); updateAnalyzer();
+setChoice("4",true);
+setTimeout(()=>generate(true),450);
+setTimeout(()=>toast("Welcome — press <b class='font-mono'>Space</b> to generate","info"),1400);
+
+})();
+</script>
+</body>
+</html>
